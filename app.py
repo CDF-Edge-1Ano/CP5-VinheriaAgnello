@@ -1,10 +1,52 @@
+#Cria o servidor
 from flask import Flask, jsonify
 import requests
 
+#Cria a plotagem do gráfico
 from flask import Flask, jsonify, render_template
 
+#Cria o Mqtt
+import paho.mqtt.client as mqtt
 
 app = Flask(__name__)
+
+BROKER = "34.39.176.211"
+PORT = 1883
+TOPIC_CMD = "/TEF/sensor001/cmd"
+
+def enviar_comando(comando):
+    print(f"Enviando comando: {comando}")
+    mqtt_client.publish(TOPIC_CMD, comando)
+
+def verificar_anomalia(temp_data, hum_data, lum_data):
+    if not temp_data or not hum_data or not lum_data:
+        return
+
+    temp = float(temp_data[-1]['attrValue'])
+    hum = float(hum_data[-1]['attrValue'])
+    lum = float(lum_data[-1]['attrValue'])
+
+    print(f"T={temp} | H={hum} | L={lum}")
+
+    # 🔥 REGRAS (pode ajustar)
+    if temp > 18:
+        enviar_comando("temp_alta")
+    elif temp < 12:
+        enviar_comando("temp_baixa")
+
+    elif hum > 70:
+        enviar_comando("umidade_alta")
+    elif hum < 50:
+        enviar_comando("umidade_baixa")
+
+    elif lum > 80:
+        enviar_comando("luminosidade_alta")
+
+    else:
+        enviar_comando("estavel")
+
+mqtt_client = mqtt.Client()
+mqtt_client.connect(BROKER, PORT, 60)
 
 @app.route("/")
 def index():
@@ -33,11 +75,45 @@ def obter_dados(atributo, lastN=30):
     except:
         return []
 
+ultimo_estado = None
+
+def verificar_anomalia(temp_data, hum_data, lum_data):
+    global ultimo_estado
+
+    if not temp_data or not hum_data or not lum_data:
+        return
+
+    temp = float(temp_data[-1]['attrValue'])
+    hum = float(hum_data[-1]['attrValue'])
+    lum = float(lum_data[-1]['attrValue'])
+
+    print(f"T={temp} | H={hum} | L={lum}")
+
+    estado = "estavel"
+
+    if temp >= 30:
+        estado = "temp_alta"
+    elif temp <= 0:
+        estado = "temp_baixa"
+    elif hum >= 90:
+        estado = "umidade_alta"
+    elif hum <= 20:
+        estado = "umidade_baixa"
+    elif lum >= 90:
+        estado = "luminosidade_alta"
+
+    if estado != ultimo_estado:
+        print(f"Novo estado: {estado}")
+        enviar_comando(estado)
+        ultimo_estado = estado
+
 @app.route("/dados")
 def dados():
     luminosity = obter_dados("luminosity")
     temperature = obter_dados("temperature")
     humidity = obter_dados("humidity")
+
+    verificar_anomalia(temperature, humidity, luminosity)
 
     return jsonify({
         "luminosity": luminosity,

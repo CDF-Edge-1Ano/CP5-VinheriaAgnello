@@ -1,10 +1,23 @@
+html, body {
+    height: 100%;      /* 🔥 ocupa toda a tela */
+    margin: 0;
+}
 #titulo{
     text-align: center;
     font-family: Arial, Helvetica, sans-serif;
 }
-body{
-   background: #e3f5cb;
-   background: linear-gradient(180deg, rgba(227, 245, 203, 0.11) 0%, rgba(59, 237, 98, 1) 100%);
+body {
+    margin: 0;
+    min-height: 100vh; 
+
+    background: linear-gradient(
+        180deg,
+        rgba(227, 245, 203, 0.11) 0%,
+        rgba(59, 237, 98, 1) 100%
+    );
+
+    background-repeat: no-repeat;
+    background-size: cover;
 }
 .graficos {
     display: flex;
