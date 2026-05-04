@@ -1,5 +1,3 @@
-#Cria o servidor
-from flask import Flask, jsonify
 import requests
 
 #Cria a plotagem do gráfico
@@ -7,6 +5,9 @@ from flask import Flask, jsonify, render_template
 
 #Cria o Mqtt
 import paho.mqtt.client as mqtt
+
+#para o estado atual
+estado_atual = "estavel"
 
 app = Flask(__name__)
 
@@ -18,7 +19,12 @@ def enviar_comando(comando):
     print(f"Enviando comando: {comando}")
     mqtt_client.publish(TOPIC_CMD, comando)
 
+ultimo_estado = None
+estado_atual = "estavel"
+
 def verificar_anomalia(temp_data, hum_data, lum_data):
+    global ultimo_estado, estado_atual
+
     if not temp_data or not hum_data or not lum_data:
         return
 
@@ -28,22 +34,29 @@ def verificar_anomalia(temp_data, hum_data, lum_data):
 
     print(f"T={temp} | H={hum} | L={lum}")
 
-    # 🔥 REGRAS (pode ajustar)
-    if temp > 18:
-        enviar_comando("temp_alta")
-    elif temp < 12:
-        enviar_comando("temp_baixa")
+    estado = "estavel"
 
-    elif hum > 70:
-        enviar_comando("umidade_alta")
-    elif hum < 50:
-        enviar_comando("umidade_baixa")
+    if temp >= 30:
+        estado = "temp_alta"
+    elif temp <= 0:
+        estado = "temp_baixa"
+    elif hum >= 70:
+        estado = "umidade_alta"
+    elif hum <= 20:
+        estado = "umidade_baixa"
+    elif lum >= 90:
+        estado = "luminosidade_alta"
 
-    elif lum > 80:
-        enviar_comando("luminosidade_alta")
+    estado_atual = estado  # 🔥 ESSENCIAL
 
-    else:
-        enviar_comando("estavel")
+    if estado != ultimo_estado:
+        print(f"Novo estado: {estado}")
+        enviar_comando(estado)
+        ultimo_estado = estado
+
+    if estado != ultimo_estado:
+        enviar_comando(estado)
+        ultimo_estado = estado
 
 mqtt_client = mqtt.Client()
 mqtt_client.connect(BROKER, PORT, 60)
@@ -75,38 +88,6 @@ def obter_dados(atributo, lastN=30):
     except:
         return []
 
-ultimo_estado = None
-
-def verificar_anomalia(temp_data, hum_data, lum_data):
-    global ultimo_estado
-
-    if not temp_data or not hum_data or not lum_data:
-        return
-
-    temp = float(temp_data[-1]['attrValue'])
-    hum = float(hum_data[-1]['attrValue'])
-    lum = float(lum_data[-1]['attrValue'])
-
-    print(f"T={temp} | H={hum} | L={lum}")
-
-    estado = "estavel"
-
-    if temp >= 30:
-        estado = "temp_alta"
-    elif temp <= 0:
-        estado = "temp_baixa"
-    elif hum >= 90:
-        estado = "umidade_alta"
-    elif hum <= 20:
-        estado = "umidade_baixa"
-    elif lum >= 90:
-        estado = "luminosidade_alta"
-
-    if estado != ultimo_estado:
-        print(f"Novo estado: {estado}")
-        enviar_comando(estado)
-        ultimo_estado = estado
-
 @app.route("/dados")
 def dados():
     luminosity = obter_dados("luminosity")
@@ -118,7 +99,8 @@ def dados():
     return jsonify({
         "luminosity": luminosity,
         "temperature": temperature,
-        "humidity": humidity
+        "humidity": humidity,
+        "estado": estado_atual
     })
 
 if __name__ == "__main__":
