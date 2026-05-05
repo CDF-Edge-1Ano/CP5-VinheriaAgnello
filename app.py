@@ -11,7 +11,7 @@ estado_atual = "estavel"
 
 app = Flask(__name__)
 
-BROKER = "34.39.176.211"
+BROKER = "34.132.133.48"
 PORT = 1883
 TOPIC_CMD = "/TEF/sensor001/cmd"
 
@@ -47,7 +47,7 @@ def verificar_anomalia(temp_data, hum_data, lum_data):
     elif lum >= 90:
         estado = "luminosidade_alta"
 
-    estado_atual = estado  # 🔥 ESSENCIAL
+    estado_atual = estado 
 
     if estado != ultimo_estado:
         print(f"Novo estado: {estado}")
@@ -65,7 +65,7 @@ mqtt_client.connect(BROKER, PORT, 60)
 def index():
     return render_template("index.html")
 
-BASE_URL = "http://34.39.176.211:8666"
+BASE_URL = "http://34.132.133.48:8666"
 ENTITY_ID = "urn:ngsi-ld:Sensor:001"
 
 headers = {
